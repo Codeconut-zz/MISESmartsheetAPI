@@ -11,10 +11,15 @@ from app.config import get_settings
 from app.connectors.smartsheet_client import SmartsheetClient, SmartsheetError
 from app.services.organization_loader import BlueprintLoadError, load_organization_blueprint
 from app.services.organization_loader import summarize_blueprint
+from app.services.audit_service import AuditService, InMemoryAuditSink
 from app.services.filesystem_discovery_service import FilesystemDiscoveryService
 from app.services.data_quality_service import DataQualityService, export_data_quality_report
 from app.services.dry_run_planner import DryRunPlanner, export_plan
 from app.services.polling_service import PollingError, PollingService
+from app.services.project_folder_creation_service import (
+    ProjectFolderCreationError,
+    ProjectFolderCreationService,
+)
 from app.services.reconciliation_service import ReconciliationService
 from app.services.reconciliation_service import export_reconciliation_results
 from app.services.reconciliation_service import load_folder_inventory_export, load_tir_records_export
@@ -340,6 +345,31 @@ def plan(
         },
         pretty=pretty,
     )
+
+
+@app.command("apply-folder-plan")
+def apply_folder_plan(
+    plan_path: Path = typer.Argument(..., help="Previously generated dry-run plan JSON file."),
+    apply: bool = typer.Option(False, "--apply", help="Actually create folders from the plan."),
+    root: Path | None = typer.Option(None, "--root", help="Override MISE_PROJECT_ROOT for folder creation."),
+    actor: str = typer.Option("system", "--actor", help="Audit actor recorded for created folders."),
+    pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON output."),
+) -> None:
+    """Create project folders from an approved dry-run plan."""
+    try:
+        result = ProjectFolderCreationService(
+            audit=AuditService(sink=InMemoryAuditSink(), emit_logs=False)
+        ).apply_plan(
+            plan_path=plan_path,
+            apply=apply,
+            project_root=root,
+            actor=actor,
+        )
+    except ProjectFolderCreationError as exc:
+        _echo_error(str(exc), pretty=pretty)
+        raise typer.Exit(code=1) from exc
+
+    _echo_json(result.model_dump(mode="json"), pretty=pretty)
 
 
 def get_smartsheet_client() -> SmartsheetClient:

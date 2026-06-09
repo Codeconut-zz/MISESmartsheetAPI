@@ -30,8 +30,9 @@ class InMemoryAuditSink:
 class AuditService:
     """Create audit events and emit redacted structured audit logs."""
 
-    def __init__(self, sink: InMemoryAuditSink | None = None) -> None:
+    def __init__(self, sink: InMemoryAuditSink | None = None, *, emit_logs: bool = True) -> None:
         self._sink = sink or InMemoryAuditSink()
+        self._emit_logs = emit_logs
         self._logger = structlog.get_logger("audit")
 
     @property
@@ -65,18 +66,19 @@ class AuditService:
             metadata=metadata or {},
         )
         self._sink.append(event)
-        self._logger.info(
-            "audit_event",
-            actor=event.actor,
-            action=event.action,
-            target_type=event.target_type,
-            target_id=event.target_id,
-            environment=event.environment,
-            dry_run=event.dry_run,
-            status=event.status,
-            message=event.message,
-            metadata=event.metadata,
-        )
+        if self._emit_logs:
+            self._logger.info(
+                "audit_event",
+                actor=event.actor,
+                action=event.action,
+                target_type=event.target_type,
+                target_id=event.target_id,
+                environment=event.environment,
+                dry_run=event.dry_run,
+                status=event.status,
+                message=event.message,
+                metadata=event.metadata,
+            )
         return event
 
     def list_events(self) -> list[AuditEvent]:
