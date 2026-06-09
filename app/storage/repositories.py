@@ -12,6 +12,7 @@ from app.storage.models import (
     ProjectFolderInventory,
     ReconciliationResult,
     TIRRecord,
+    WebhookEventRecord,
     utc_now,
 )
 
@@ -268,6 +269,36 @@ class ReportingRepository:
             "reconciliation_category": _group_counts(session, ReconciliationResult.category),
             "department_code": _group_counts(session, DepartmentReportingSnapshot.department_code),
         }
+
+
+class WebhookEventRepository:
+    """Repository for queued webhook events."""
+
+    def enqueue(
+        self,
+        session: Session,
+        *,
+        event_id: str,
+        source: str,
+        payload: dict[str, object],
+    ) -> tuple[WebhookEventRecord, bool]:
+        """Store a webhook event once, returning whether it was newly created."""
+        existing = session.scalar(
+            select(WebhookEventRecord).where(WebhookEventRecord.event_id == event_id)
+        )
+        if existing is not None:
+            return existing, False
+
+        record = WebhookEventRecord(
+            event_id=event_id,
+            source=source,
+            status="QUEUED",
+            payload=payload,
+            received_at=utc_now(),
+        )
+        session.add(record)
+        session.flush()
+        return record, True
 
 
 def _count(session: Session, stmt: Select[tuple[object]]) -> int:

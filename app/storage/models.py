@@ -148,3 +148,17 @@ class DepartmentReportingSnapshot(Base, TimestampMixin):
     funding_source_breakdown: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     data_quality_issue_count: Mapped[int] = mapped_column(Integer, default=0)
     missing_folder_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class WebhookEventRecord(Base, TimestampMixin):
+    """Persisted inbound webhook event queued for background processing."""
+
+    __tablename__ = "webhook_events"
+    __table_args__ = (Index("ix_webhook_events_event_id", "event_id", unique=True),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    event_id: Mapped[str] = mapped_column(String(255))
+    source: Mapped[str] = mapped_column(String(100), default="smartsheet")
+    status: Mapped[str] = mapped_column(String(50), default="QUEUED")
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

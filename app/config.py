@@ -62,12 +62,14 @@ class SecuritySettings(FrozenSettingsModel):
     """Safety controls for operations that can change external state."""
 
     require_apply_flag: bool
+    webhook_shared_secret: str
 
 
 class FeatureFlags(FrozenSettingsModel):
     """Runtime feature switches."""
 
     enable_write_operations: bool
+    enable_webhooks: bool
 
 
 class Settings(BaseSettings):
@@ -90,7 +92,9 @@ class Settings(BaseSettings):
     mise_registry_root: str = ""
     report_export_root: str = DEFAULT_REPORT_FOLDER
     enable_write_operations: bool = False
+    enable_webhooks: bool = False
     require_apply_flag: bool = True
+    webhook_shared_secret: str = ""
 
     @property
     def app(self) -> AppSettings:
@@ -123,12 +127,18 @@ class Settings(BaseSettings):
     @property
     def security(self) -> SecuritySettings:
         """Return grouped security settings."""
-        return SecuritySettings(require_apply_flag=self.require_apply_flag)
+        return SecuritySettings(
+            require_apply_flag=self.require_apply_flag,
+            webhook_shared_secret=self.webhook_shared_secret,
+        )
 
     @property
     def features(self) -> FeatureFlags:
         """Return grouped feature flag settings."""
-        return FeatureFlags(enable_write_operations=self.enable_write_operations)
+        return FeatureFlags(
+            enable_write_operations=self.enable_write_operations,
+            enable_webhooks=self.enable_webhooks,
+        )
 
     @model_validator(mode="after")
     def validate_production_settings(self) -> Self:
@@ -147,6 +157,9 @@ class Settings(BaseSettings):
 
         if "user:password@localhost" in self.database_url:
             raise ValueError("Production DATABASE_URL must not use the example local placeholder")
+
+        if self.enable_webhooks and not self.webhook_shared_secret:
+            raise ValueError("Production WEBHOOK_SHARED_SECRET is required when webhooks are enabled")
 
         return self
 

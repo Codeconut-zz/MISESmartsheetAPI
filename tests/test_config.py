@@ -20,6 +20,7 @@ def test_settings_load_in_test_mode() -> None:
 
     assert settings.environment == "test"
     assert settings.enable_write_operations is False
+    assert settings.enable_webhooks is False
     assert settings.require_apply_flag is True
 
 
