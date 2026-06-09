@@ -1,0 +1,18 @@
+columns:
+  Created: created
+  SECRETARY APPROVAL: secretary_approval
+  MISE HOD: mise_hod
+  REGISTRY (Confirmation): registry_confirmation
+  REGISTRY (MISE File Ref): registry_file_ref
+  CLIENT (File Ref): client_file_ref
+  ORGANISATION: organisation
+  PROJECT NAME (Subject): project_name
+  SERVICE REQUEST: service_request
+  PROJECT LOCATION: project_location
+  PROJECT STATUS: project_status
+  CONTACT PERSON: contact_person
+  CONTACT PERSON POSITION: contact_person_position
+  CONTACT NUMBER: contact_number
+  CONTACT EMAIL: contact_email
+  PROJECT BACKGROUND INFORMATION: project_background_information
+  FUNDING SOURCE: funding_source
