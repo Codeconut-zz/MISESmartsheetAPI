@@ -13,6 +13,7 @@ from app.services.organization_loader import BlueprintLoadError, load_organizati
 from app.services.organization_loader import summarize_blueprint
 from app.services.filesystem_discovery_service import FilesystemDiscoveryService
 from app.services.data_quality_service import DataQualityService, export_data_quality_report
+from app.services.dry_run_planner import DryRunPlanner, export_plan
 from app.services.polling_service import PollingError, PollingService
 from app.services.reconciliation_service import ReconciliationService
 from app.services.reconciliation_service import export_reconciliation_results
@@ -33,7 +34,6 @@ reconcile_app = typer.Typer(help="Reconciliation commands.")
 report_app = typer.Typer(help="Reporting commands.")
 data_quality_app = typer.Typer(help="Data quality commands.")
 sync_app = typer.Typer(help="Read-only synchronization commands.")
-plan_app = typer.Typer(help="Dry-run planning commands.")
 apply_app = typer.Typer(help="Guarded apply commands.")
 
 app.add_typer(smartsheet_app, name="smartsheet")
@@ -45,7 +45,6 @@ app.add_typer(reconcile_app, name="reconcile")
 app.add_typer(report_app, name="report")
 app.add_typer(data_quality_app, name="data-quality")
 app.add_typer(sync_app, name="sync")
-app.add_typer(plan_app, name="plan")
 app.add_typer(apply_app, name="apply")
 
 
@@ -306,6 +305,41 @@ def sync_poll(
     while True:
         sync_poll_once(sheet_id=sheet_id, pretty=pretty)
         time.sleep(interval_seconds)
+
+
+@app.command("plan")
+def plan(
+    blueprint_path: Path = typer.Argument(..., help="Path to a MISE organization blueprint YAML file."),
+    out: Path = typer.Option(Path("data/reports/plan.json"), "--out", help="Write plan JSON output."),
+    tir: Path | None = typer.Option(None, "--tir", help="Optional TIR pull JSON export."),
+    folders: Path | None = typer.Option(None, "--folders", help="Optional folder inventory JSON export."),
+    reconciliation: Path | None = typer.Option(None, "--reconciliation", help="Optional reconciliation export."),
+    report_root: Path = typer.Option(Path("data/reports"), "--report-root", help="Report folder root."),
+    pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON output."),
+) -> None:
+    """Build a dry-run plan without changing external systems."""
+    try:
+        dry_run_plan = DryRunPlanner().build_plan(
+            blueprint_path=blueprint_path,
+            report_root=report_root,
+            tir_path=tir,
+            folders_path=folders,
+            reconciliation_path=reconciliation,
+        )
+        export_plan(dry_run_plan, out, pretty=True)
+    except Exception as exc:
+        _echo_error(f"Dry-run planning failed: {exc}", pretty=pretty)
+        raise typer.Exit(code=1) from exc
+
+    _echo_json(
+        {
+            "status": "planned",
+            "plan_path": str(out),
+            "operation_count": dry_run_plan.operation_count,
+            "warnings": dry_run_plan.warnings,
+        },
+        pretty=pretty,
+    )
 
 
 def get_smartsheet_client() -> SmartsheetClient:
