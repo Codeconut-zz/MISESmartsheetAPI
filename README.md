@@ -30,6 +30,35 @@ Run the CLI health command:
 python -m app.cli.main health
 ```
 
+## Configuration
+
+The application reads configuration from environment variables with optional local `.env` support.
+Start from the checked-in placeholder file:
+
+```bash
+Copy-Item .env.example .env
+```
+
+Example development values:
+
+```dotenv
+ENVIRONMENT=development
+LOG_LEVEL=INFO
+SMARTSHEET_BASE_URL=https://api.smartsheet.com/2.0
+SMARTSHEET_ACCESS_TOKEN=
+SMARTSHEET_TIR_SHEET_ID=
+DATABASE_URL=postgresql+psycopg2://user:password@localhost:5432/mise_smartsheet
+MISE_PROJECT_ROOT=
+MISE_REGISTRY_ROOT=
+REPORT_EXPORT_ROOT=data/reports
+ENABLE_WRITE_OPERATIONS=false
+REQUIRE_APPLY_FLAG=true
+```
+
+Production mode validates that Smartsheet access, the TIR sheet ID, database URL, and MISE
+filesystem roots are present. Write operations remain disabled unless explicitly enabled and guarded
+by the apply flag.
+
 ## Verification
 
 ```bash
