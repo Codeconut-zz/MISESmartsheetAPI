@@ -1,0 +1,13 @@
+.git
+.venv
+__pycache__
+.pytest_cache
+.ruff_cache
+.mypy_cache
+*.pyc
+.env
+data/exports/*
+data/reports/*
+!data/exports/.gitkeep
+!data/reports/.gitkeep
+MISE_Codex_Pilot_API_Prompt_Package

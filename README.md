@@ -93,6 +93,36 @@ curl -H "Authorization: Bearer <token>" http://localhost:8000/api/v1/reports/sum
 For local development only, set `ENVIRONMENT=development` and `AUTH_DISABLED=true` to bypass API
 auth. Production rejects `AUTH_DISABLED=true` and requires `JWT_SECRET`.
 
+## Docker Local Deployment
+
+Create a local `.env` and set at least `POSTGRES_PASSWORD` before using Compose:
+
+```bash
+Copy-Item .env.example .env
+```
+
+Run the app and PostgreSQL:
+
+```bash
+docker compose up --build app
+```
+
+The app is served on `http://localhost:8000` by default. `data/exports` and `data/reports` are
+mounted into the container for local export/report output. Adminer is available only when the tools
+profile is requested:
+
+```bash
+docker compose --profile tools up adminer
+```
+
+Local helper scripts:
+
+```bash
+bash scripts/run_local.sh
+bash scripts/test_local.sh
+python scripts/smoke_health.py http://localhost:8000
+```
+
 ## Verification
 
 ```bash

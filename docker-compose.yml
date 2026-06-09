@@ -1,0 +1,69 @@
+services:
+  app:
+    build:
+      context: .
+    image: mise-smartsheet-api:local
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SMARTSHEET_BASE_URL: ${SMARTSHEET_BASE_URL:-https://api.smartsheet.com/2.0}
+      SMARTSHEET_ACCESS_TOKEN: ${SMARTSHEET_ACCESS_TOKEN:-}
+      SMARTSHEET_TIR_SHEET_ID: ${SMARTSHEET_TIR_SHEET_ID:-}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-mise}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-mise_smartsheet}
+      MISE_PROJECT_ROOT: ${MISE_PROJECT_ROOT:-/app/data/projects}
+      MISE_REGISTRY_ROOT: ${MISE_REGISTRY_ROOT:-/app/data/registry}
+      REPORT_EXPORT_ROOT: /app/data/reports
+      ATTACHMENT_DOWNLOAD_ROOT: ${ATTACHMENT_DOWNLOAD_ROOT:-/app/data/attachments}
+      ENABLE_WRITE_OPERATIONS: ${ENABLE_WRITE_OPERATIONS:-false}
+      ENABLE_WEBHOOKS: ${ENABLE_WEBHOOKS:-false}
+      ENABLE_ATTACHMENT_DOWNLOADS: ${ENABLE_ATTACHMENT_DOWNLOADS:-false}
+      REQUIRE_APPLY_FLAG: ${REQUIRE_APPLY_FLAG:-true}
+      WEBHOOK_SHARED_SECRET: ${WEBHOOK_SHARED_SECRET:-}
+      JWT_SECRET: ${JWT_SECRET:-local-development-jwt-secret}
+      AUTH_DISABLED: ${AUTH_DISABLED:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./data/exports:/app/data/exports
+      - ./data/reports:/app/data/reports
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mise_smartsheet}
+      POSTGRES_USER: ${POSTGRES_USER:-mise}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  adminer:
+    image: adminer:4
+    profiles: ["tools"]
+    ports:
+      - "${ADMINER_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
