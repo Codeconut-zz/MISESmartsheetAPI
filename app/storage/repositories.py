@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from typing import Literal
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, delete, func, select
 from sqlalchemy.orm import Session
 
 from app.domain.tir import TechnicalIntakeRequest
@@ -270,6 +270,34 @@ class ReportingRepository:
             "reconciliation_category": _group_counts(session, ReconciliationResult.category),
             "department_code": _group_counts(session, DepartmentReportingSnapshot.department_code),
         }
+
+    def replace_department_snapshots(
+        self,
+        session: Session,
+        snapshots: list[dict[str, object]],
+    ) -> list[DepartmentReportingSnapshot]:
+        """Replace persisted department reporting snapshots."""
+        session.execute(delete(DepartmentReportingSnapshot))
+        records: list[DepartmentReportingSnapshot] = []
+        for snapshot in snapshots:
+            record = DepartmentReportingSnapshot(**snapshot)
+            session.add(record)
+            records.append(record)
+
+        session.flush()
+        return records
+
+    def list_department_snapshots(self, session: Session) -> list[DepartmentReportingSnapshot]:
+        """Return persisted department reporting snapshots."""
+        return list(
+            session.scalars(
+                select(DepartmentReportingSnapshot).order_by(
+                    DepartmentReportingSnapshot.scope.asc(),
+                    DepartmentReportingSnapshot.department_code.asc(),
+                    DepartmentReportingSnapshot.division_code.asc(),
+                )
+            ).all()
+        )
 
 
 class WebhookEventRepository:

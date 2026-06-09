@@ -101,3 +101,34 @@ class ReportSummaryResponse(BaseModel):
     """Report summary response."""
 
     summary: dict[str, dict[str, int]]
+
+
+class DepartmentSnapshotRead(BaseModel):
+    """Department reporting snapshot response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    scope: str
+    snapshot_name: str
+    department_code: str
+    division_code: str | None
+    funding_source: str | None
+    project_count: int
+    status_breakdown: dict[str, int]
+    funding_source_breakdown: dict[str, int]
+    pending_approvals: int
+    approved_projects: int
+    declined_projects: int
+    data_quality_issue_count: int
+    missing_data_count: int
+    missing_folder_count: int
+    service_request_breakdown: dict[str, int]
+    created_at: datetime
+    updated_at: datetime
+
+
+class DepartmentSnapshotListResponse(BaseModel):
+    """Department reporting snapshot list response."""
+
+    items: list[DepartmentSnapshotRead]

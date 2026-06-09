@@ -96,6 +96,7 @@ def test_report_export_generates_workbook_json_and_csv(tmp_path: Path) -> None:
         "Folder Inventory",
         "Reconciliation Results",
         "Data Quality Issues",
+        "Department Snapshots",
     ]
 
     summary_rows = list(workbook["Summary"].iter_rows(values_only=True))

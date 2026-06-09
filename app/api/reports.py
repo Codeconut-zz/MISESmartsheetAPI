@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db_session
-from app.api.schemas import ReportSummaryResponse
+from app.api.schemas import DepartmentSnapshotListResponse, ReportSummaryResponse
 from app.storage.repositories import ReportingRepository
 
 router = APIRouter(prefix="/api/v1/reports", tags=["reports"])
@@ -16,3 +16,13 @@ def get_report_summary(
 ) -> ReportSummaryResponse:
     """Return report summary counts."""
     return ReportSummaryResponse(summary=ReportingRepository().summary(session))
+
+
+@router.get("/department-snapshots", response_model=DepartmentSnapshotListResponse)
+def get_department_snapshots(
+    session: Session = Depends(get_db_session),
+) -> DepartmentSnapshotListResponse:
+    """Return persisted department reporting snapshots."""
+    return DepartmentSnapshotListResponse(
+        items=ReportingRepository().list_department_snapshots(session)
+    )

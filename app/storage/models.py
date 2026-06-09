@@ -140,14 +140,20 @@ class DepartmentReportingSnapshot(Base, TimestampMixin):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
     scope: Mapped[str] = mapped_column(String(100))
+    snapshot_name: Mapped[str] = mapped_column(String(255), default="")
     department_code: Mapped[str] = mapped_column(String(50))
     division_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
     funding_source: Mapped[str | None] = mapped_column(String(255), nullable=True)
     project_count: Mapped[int] = mapped_column(Integer, default=0)
     status_breakdown: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     funding_source_breakdown: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    pending_approvals: Mapped[int] = mapped_column(Integer, default=0)
+    approved_projects: Mapped[int] = mapped_column(Integer, default=0)
+    declined_projects: Mapped[int] = mapped_column(Integer, default=0)
     data_quality_issue_count: Mapped[int] = mapped_column(Integer, default=0)
+    missing_data_count: Mapped[int] = mapped_column(Integer, default=0)
     missing_folder_count: Mapped[int] = mapped_column(Integer, default=0)
+    service_request_breakdown: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
 
 class AttachmentMetadataRecord(Base, TimestampMixin):

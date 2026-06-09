@@ -16,12 +16,15 @@ from app.services.reconciliation_service import (
     load_folder_inventory_export,
     load_tir_records_export,
 )
+from app.services.reporting_snapshot_service import ReportingSnapshot, ReportingSnapshotService
+from app.services.reporting_snapshot_service import snapshot_rows
 
 SUMMARY_SHEET = "Summary"
 TIR_SHEET = "TIR Records"
 FOLDER_SHEET = "Folder Inventory"
 RECONCILIATION_SHEET = "Reconciliation Results"
 DATA_QUALITY_SHEET = "Data Quality Issues"
+DEPARTMENT_SNAPSHOT_SHEET = "Department Snapshots"
 
 
 class ReportExportResult(BaseModel):
@@ -54,6 +57,10 @@ class ReportExportService:
         folder_inventory = load_folder_inventory_export(folders_path)
         reconciliation_results = load_reconciliation_results(reconciliation_path)
         data_quality_report = DataQualityService().check(tir_records)
+        reporting_snapshots = ReportingSnapshotService().generate(
+            tir_records=tir_records,
+            reconciliation_results=reconciliation_results,
+        )
         summary_rows = build_summary_rows(tir_records, reconciliation_results)
         output_dir = Path(out_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -70,6 +77,7 @@ class ReportExportService:
             folder_inventory=folder_inventory,
             reconciliation_results=reconciliation_results,
             data_quality_issues=data_quality_issue_rows(data_quality_report),
+            reporting_snapshots=reporting_snapshots,
         )
         _write_json(
             json_path,
@@ -78,6 +86,7 @@ class ReportExportService:
             folder_inventory=folder_inventory,
             reconciliation_results=reconciliation_results,
             data_quality_issues=data_quality_issue_rows(data_quality_report),
+            reporting_snapshots=reporting_snapshots,
         )
         pd.DataFrame(summary_rows).to_csv(csv_path, index=False)
 
@@ -138,6 +147,7 @@ def _write_xlsx(
     folder_inventory: list[FolderInventoryEntry],
     reconciliation_results: list[ReconciliationResult],
     data_quality_issues: list[dict[str, Any]],
+    reporting_snapshots: list[ReportingSnapshot],
 ) -> None:
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
         pd.DataFrame(summary_rows).to_excel(writer, sheet_name=SUMMARY_SHEET, index=False)
@@ -162,6 +172,11 @@ def _write_xlsx(
             sheet_name=DATA_QUALITY_SHEET,
             index=False,
         )
+        pd.DataFrame(snapshot_rows(reporting_snapshots)).to_excel(
+            writer,
+            sheet_name=DEPARTMENT_SNAPSHOT_SHEET,
+            index=False,
+        )
 
 
 def _write_json(
@@ -172,6 +187,7 @@ def _write_json(
     folder_inventory: list[FolderInventoryEntry],
     reconciliation_results: list[ReconciliationResult],
     data_quality_issues: list[dict[str, Any]],
+    reporting_snapshots: list[ReportingSnapshot],
 ) -> None:
     payload = {
         "summary": summary_rows,
@@ -179,6 +195,7 @@ def _write_json(
         "folder_inventory": [folder.model_dump(mode="json") for folder in folder_inventory],
         "reconciliation_results": [_reconciliation_row(result) for result in reconciliation_results],
         "data_quality_issues": data_quality_issues,
+        "department_snapshots": snapshot_rows(reporting_snapshots),
     }
     output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
