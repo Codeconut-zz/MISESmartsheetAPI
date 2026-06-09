@@ -30,6 +30,18 @@ Run the CLI health command:
 python -m app.cli.main health
 ```
 
+The installed console script is named `mise-smartsheet`:
+
+```bash
+mise-smartsheet health --pretty
+mise-smartsheet smartsheet whoami --pretty
+mise-smartsheet smartsheet list-workspaces
+mise-smartsheet smartsheet list-sheets
+```
+
+All CLI commands emit JSON by default. Smartsheet commands are read-only at this stage and require a
+local `SMARTSHEET_ACCESS_TOKEN`.
+
 ## Configuration
 
 The application reads configuration from environment variables with optional local `.env` support.
