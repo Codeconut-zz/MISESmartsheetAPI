@@ -43,6 +43,7 @@ mise-smartsheet filesystem scan --root C:\MISE\Projects --max-depth 4 --out data
 mise-smartsheet reconcile --tir data/exports/tir_rows.json --folders data/exports/folder_inventory.json --out data/reports/reconciliation.xlsx
 mise-smartsheet report export --tir data/exports/tir_rows.json --folders data/exports/folder_inventory.json --reconciliation data/reports/reconciliation.json --out data/reports
 mise-smartsheet data-quality check --tir data/exports/tir_rows.json --out data/reports/data_quality.xlsx
+mise-smartsheet sync poll-once
 ```
 
 All CLI commands emit JSON by default. Smartsheet commands are read-only at this stage and require a

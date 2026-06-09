@@ -1,5 +1,6 @@
 """Repository layer for persisted application records."""
 
+from datetime import UTC, datetime
 from typing import Literal
 
 from sqlalchemy import Select, func, select
@@ -11,6 +12,7 @@ from app.storage.models import (
     ProjectFolderInventory,
     ReconciliationResult,
     TIRRecord,
+    utc_now,
 )
 
 SortOrder = Literal["asc", "desc"]
@@ -31,6 +33,7 @@ class TIRRecordRepository:
         record = TIRRecord(
             smartsheet_sheet_id=smartsheet_sheet_id,
             smartsheet_row_id=smartsheet_row_id,
+            last_synced_at=utc_now(),
             created=tir.created,
             secretary_approval=tir.secretary_approval,
             mise_hod=tir.mise_hod,
@@ -52,6 +55,59 @@ class TIRRecordRepository:
         session.add(record)
         session.flush()
         return record
+
+    def upsert_from_smartsheet_row(
+        self,
+        session: Session,
+        tir: TechnicalIntakeRequest,
+        *,
+        smartsheet_sheet_id: str,
+        smartsheet_row_id: str,
+        smartsheet_modified_at: datetime | None,
+    ) -> tuple[TIRRecord, str]:
+        """Insert, update, or mark unchanged based on Smartsheet row metadata."""
+        existing = self.get_by_smartsheet_identity(
+            session,
+            smartsheet_sheet_id=smartsheet_sheet_id,
+            smartsheet_row_id=smartsheet_row_id,
+        )
+        sync_timestamp = utc_now()
+        if existing is None:
+            record = self.add(
+                session,
+                tir,
+                smartsheet_sheet_id=smartsheet_sheet_id,
+                smartsheet_row_id=smartsheet_row_id,
+            )
+            record.smartsheet_modified_at = smartsheet_modified_at
+            record.last_synced_at = sync_timestamp
+            return record, "created"
+
+        if _same_modified_at(existing.smartsheet_modified_at, smartsheet_modified_at):
+            existing.last_synced_at = sync_timestamp
+            session.flush()
+            return existing, "unchanged"
+
+        _apply_tir_to_record(existing, tir)
+        existing.smartsheet_modified_at = smartsheet_modified_at
+        existing.last_synced_at = sync_timestamp
+        session.flush()
+        return existing, "updated"
+
+    def get_by_smartsheet_identity(
+        self,
+        session: Session,
+        *,
+        smartsheet_sheet_id: str,
+        smartsheet_row_id: str,
+    ) -> TIRRecord | None:
+        """Return one TIR record by Smartsheet sheet and row ID."""
+        return session.scalar(
+            select(TIRRecord).where(
+                TIRRecord.smartsheet_sheet_id == smartsheet_sheet_id,
+                TIRRecord.smartsheet_row_id == smartsheet_row_id,
+            )
+        )
 
     def get_by_registry_file_ref(
         self,
@@ -234,3 +290,37 @@ def _apply_sort(
 def _group_counts(session: Session, column: object) -> dict[str, int]:
     rows = session.execute(select(column, func.count()).group_by(column)).all()
     return {str(value or "UNSPECIFIED"): count for value, count in rows}
+
+
+def _apply_tir_to_record(record: TIRRecord, tir: TechnicalIntakeRequest) -> None:
+    record.created = tir.created
+    record.secretary_approval = tir.secretary_approval
+    record.mise_hod = tir.mise_hod
+    record.registry_confirmation = tir.registry_confirmation
+    record.registry_file_ref = tir.registry_file_ref
+    record.client_file_ref = tir.client_file_ref
+    record.organisation = tir.organisation
+    record.project_name = tir.project_name
+    record.service_request = tir.service_request
+    record.project_location = tir.project_location
+    record.project_status = tir.project_status
+    record.contact_person = tir.contact_person
+    record.contact_person_position = tir.contact_person_position
+    record.contact_number = tir.contact_number
+    record.contact_email = tir.contact_email
+    record.project_background_information = tir.project_background_information
+    record.funding_source = tir.funding_source
+
+
+def _same_modified_at(left: datetime | None, right: datetime | None) -> bool:
+    if left is None or right is None:
+        return left is right
+
+    return _utc_naive(left) == _utc_naive(right)
+
+
+def _utc_naive(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value
+
+    return value.astimezone(UTC).replace(tzinfo=None)

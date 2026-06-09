@@ -43,11 +43,17 @@ class TIRRecord(Base, TimestampMixin):
         Index("ix_tir_records_contact_email", "contact_email"),
         Index("ix_tir_records_project_status", "project_status"),
         Index("ix_tir_records_funding_source", "funding_source"),
+        Index("ix_tir_records_smartsheet_identity", "smartsheet_sheet_id", "smartsheet_row_id"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
     smartsheet_sheet_id: Mapped[str] = mapped_column(String(255), default="")
     smartsheet_row_id: Mapped[str] = mapped_column(String(255), default="")
+    smartsheet_modified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     secretary_approval: Mapped[bool] = mapped_column(Boolean)
     mise_hod: Mapped[str] = mapped_column(String(255))

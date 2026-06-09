@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+import time
 from typing import Any
 
 import typer
@@ -12,6 +13,7 @@ from app.services.organization_loader import BlueprintLoadError, load_organizati
 from app.services.organization_loader import summarize_blueprint
 from app.services.filesystem_discovery_service import FilesystemDiscoveryService
 from app.services.data_quality_service import DataQualityService, export_data_quality_report
+from app.services.polling_service import PollingError, PollingService
 from app.services.reconciliation_service import ReconciliationService
 from app.services.reconciliation_service import export_reconciliation_results
 from app.services.reconciliation_service import load_folder_inventory_export, load_tir_records_export
@@ -30,6 +32,7 @@ filesystem_app = typer.Typer(help="Filesystem discovery commands.")
 reconcile_app = typer.Typer(help="Reconciliation commands.")
 report_app = typer.Typer(help="Reporting commands.")
 data_quality_app = typer.Typer(help="Data quality commands.")
+sync_app = typer.Typer(help="Read-only synchronization commands.")
 plan_app = typer.Typer(help="Dry-run planning commands.")
 apply_app = typer.Typer(help="Guarded apply commands.")
 
@@ -41,6 +44,7 @@ app.add_typer(filesystem_app, name="filesystem")
 app.add_typer(reconcile_app, name="reconcile")
 app.add_typer(report_app, name="report")
 app.add_typer(data_quality_app, name="data-quality")
+app.add_typer(sync_app, name="sync")
 app.add_typer(plan_app, name="plan")
 app.add_typer(apply_app, name="apply")
 
@@ -271,6 +275,37 @@ def data_quality_check(
         raise typer.Exit(code=1) from exc
 
     _echo_json(report.summary.model_dump(mode="json"), pretty=pretty)
+
+
+@sync_app.command("poll-once")
+def sync_poll_once(
+    sheet_id: str | None = typer.Option(None, "--sheet-id", help="Override SMARTSHEET_TIR_SHEET_ID."),
+    pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON output."),
+) -> None:
+    """Run one read-only polling cycle."""
+    try:
+        with get_smartsheet_client() as client:
+            result = PollingService(
+                smartsheet_client=client,
+                session_scope_factory=lambda: session_scope(),
+            ).poll_once(sheet_id=sheet_id)
+    except (PollingError, SmartsheetError, typer.BadParameter) as exc:
+        _echo_error(str(exc), pretty=pretty)
+        raise typer.Exit(code=1) from exc
+
+    _echo_json(result.model_dump(mode="json"), pretty=pretty)
+
+
+@sync_app.command("poll")
+def sync_poll(
+    interval_seconds: int = typer.Option(300, "--interval-seconds", min=1),
+    sheet_id: str | None = typer.Option(None, "--sheet-id", help="Override SMARTSHEET_TIR_SHEET_ID."),
+    pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON output."),
+) -> None:
+    """Run a development polling loop until interrupted."""
+    while True:
+        sync_poll_once(sheet_id=sheet_id, pretty=pretty)
+        time.sleep(interval_seconds)
 
 
 def get_smartsheet_client() -> SmartsheetClient:
