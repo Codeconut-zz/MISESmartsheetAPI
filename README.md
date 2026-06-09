@@ -123,6 +123,29 @@ bash scripts/test_local.sh
 python scripts/smoke_health.py http://localhost:8000
 ```
 
+## ABED Pilot Rollout
+
+The ABED pilot blueprint limits the rollout to ABED and its ADD, CPD, QCID, and BMD divisions.
+It is dry-run oriented by default and does not allow Smartsheet write-back columns.
+
+Validate the pilot blueprint:
+
+```bash
+mise-smartsheet org validate-blueprint config/architecture/abed_pilot_blueprint.yaml --pretty
+```
+
+Generate a dry-run plan:
+
+```bash
+mise-smartsheet plan config/architecture/abed_pilot_blueprint.yaml --out data/reports/abed_pilot_plan.json --pretty
+```
+
+Export a dry-run report after TIR pull, folder scan, and reconciliation exports are available:
+
+```bash
+mise-smartsheet report export --tir data/exports/tir_rows.json --folders data/exports/folder_inventory.json --reconciliation data/reports/reconciliation.json --out data/reports
+```
+
 ## Verification
 
 ```bash

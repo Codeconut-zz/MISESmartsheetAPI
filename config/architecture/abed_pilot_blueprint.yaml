@@ -1,0 +1,77 @@
+ministry:
+  code: MISE
+  name: Ministry of Infrastructure and Sustainable Energy
+  reporting_timezone: Pacific/Tarawa
+
+roles:
+  - code: DIRECTOR_ABED
+    title: Director Architectural Building & Engineering Department
+  - code: HEAD_ADD
+    title: Principal Architect
+  - code: HEAD_CPD
+    title: Principal Cost Engineer
+  - code: HEAD_QCID
+    title: Principal Quality Control Engineer
+  - code: HEAD_BMD
+    title: Principal Building Engineer
+
+reporting_lines:
+  - supervisor_role_code: DIRECTOR_ABED
+    report_role_code: HEAD_ADD
+  - supervisor_role_code: DIRECTOR_ABED
+    report_role_code: HEAD_CPD
+  - supervisor_role_code: DIRECTOR_ABED
+    report_role_code: HEAD_QCID
+  - supervisor_role_code: DIRECTOR_ABED
+    report_role_code: HEAD_BMD
+
+standard_folders:
+  - "01 - Intake"
+  - "02 - Active Projects"
+  - "03 - Project Files"
+  - "04 - Reports"
+  - "05 - Archive"
+
+standard_sheets:
+  - name: ABED Pilot TIR Register
+    purpose: ABED-only technical intake tracking during pilot rollout
+  - name: ABED Pilot Reconciliation Register
+    purpose: ABED folder reconciliation and dry-run planning
+
+departments:
+  - code: ABED
+    name: Architectural Building & Engineering Department
+    director_role_code: DIRECTOR_ABED
+    divisions:
+      - code: ADD
+        name: Architectural Design Division
+        head_role: HEAD_ADD
+      - code: CPD
+        name: Cost Planning Division
+        head_role: HEAD_CPD
+      - code: QCID
+        name: Quality Control & Inspection Division
+        head_role: HEAD_QCID
+      - code: BMD
+        name: Building Maintenance Division
+        head_role: HEAD_BMD
+
+folder_rules:
+  project_folder_pattern: "{registry_file_ref} - {project_name}"
+  sanitize_invalid_path_characters: true
+  no_overwrite: true
+  allowed_operation_types: []
+
+reporting_outputs:
+  - director_abed_summary
+  - abed_add_division_summary
+  - abed_cpd_division_summary
+  - abed_qcid_division_summary
+  - abed_bmd_division_summary
+  - abed_data_quality_summary
+
+smartsheet_writeback_rules:
+  protected_columns:
+    - "SECRETARY APPROVAL"
+    - "CONTACT EMAIL"
+  allowed_columns: []
