@@ -2,10 +2,16 @@
 
 from fastapi import FastAPI
 
+from app.api.health import router as health_router
+from app.api.projects import router as projects_router
+from app.api.reconciliation import router as reconciliation_router
+from app.api.reports import router as reports_router
+from app.api.tir import router as tir_router
+
 app = FastAPI(title="MISE Smartsheet Integration Service")
 
-
-@app.get("/health")
-def health() -> dict[str, str]:
-    """Return service health."""
-    return {"status": "ok"}
+app.include_router(health_router)
+app.include_router(tir_router)
+app.include_router(projects_router)
+app.include_router(reconciliation_router)
+app.include_router(reports_router)

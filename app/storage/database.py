@@ -5,12 +5,22 @@ from contextlib import contextmanager
 
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.config import get_settings
 
 
 def create_engine_from_url(database_url: str, *, echo: bool = False) -> Engine:
     """Create a SQLAlchemy engine for the provided URL."""
+    if database_url == "sqlite:///:memory:":
+        return create_engine(
+            database_url,
+            echo=echo,
+            future=True,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+
     connect_args = {"check_same_thread": False} if database_url.startswith("sqlite") else {}
     return create_engine(database_url, echo=echo, future=True, connect_args=connect_args)
 

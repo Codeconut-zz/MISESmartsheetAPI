@@ -102,7 +102,7 @@ class ReconciliationResult(Base, TimestampMixin):
     category: Mapped[str] = mapped_column(String(100))
     confidence_score: Mapped[float] = mapped_column(Float)
     matched_folder_path: Mapped[str | None] = mapped_column(String(1000), nullable=True)
-    reasons: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    reasons: Mapped[list[str]] = mapped_column(JSON, default=list)
 
 
 class AuditEventRecord(Base, TimestampMixin):
