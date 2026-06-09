@@ -1,6 +1,6 @@
 """FastAPI application entry point."""
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
 from app.api.health import router as health_router
 from app.api.projects import router as projects_router
@@ -8,12 +8,28 @@ from app.api.reconciliation import router as reconciliation_router
 from app.api.reports import router as reports_router
 from app.api.tir import router as tir_router
 from app.api.webhooks import router as webhooks_router
+from app.security.auth import require_roles
 
 app = FastAPI(title="MISE Smartsheet Integration Service")
 
 app.include_router(health_router)
-app.include_router(tir_router)
-app.include_router(projects_router)
-app.include_router(reconciliation_router)
-app.include_router(reports_router)
-app.include_router(webhooks_router)
+app.include_router(
+    tir_router,
+    dependencies=[Depends(require_roles("admin", "reporting", "read_only", "integration_service"))],
+)
+app.include_router(
+    projects_router,
+    dependencies=[Depends(require_roles("admin", "reporting", "read_only", "integration_service"))],
+)
+app.include_router(
+    reconciliation_router,
+    dependencies=[Depends(require_roles("admin", "reporting", "read_only", "integration_service"))],
+)
+app.include_router(
+    reports_router,
+    dependencies=[Depends(require_roles("admin", "reporting", "read_only"))],
+)
+app.include_router(
+    webhooks_router,
+    dependencies=[Depends(require_roles("admin", "integration_service"))],
+)

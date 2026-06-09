@@ -72,11 +72,26 @@ MISE_REGISTRY_ROOT=
 REPORT_EXPORT_ROOT=data/reports
 ENABLE_WRITE_OPERATIONS=false
 REQUIRE_APPLY_FLAG=true
+JWT_SECRET=change-me-for-local-development
+AUTH_DISABLED=false
 ```
 
 Production mode validates that Smartsheet access, the TIR sheet ID, database URL, and MISE
 filesystem roots are present. Write operations remain disabled unless explicitly enabled and guarded
 by the apply flag.
+
+## API Authentication
+
+All `/api/v1/*` endpoints require an HS256 JWT bearer token. Health checks remain public.
+JWT payloads should include `sub` and a `roles` list. Supported roles are `admin`, `reporting`,
+`read_only`, and `integration_service`.
+
+```bash
+curl -H "Authorization: Bearer <token>" http://localhost:8000/api/v1/reports/summary
+```
+
+For local development only, set `ENVIRONMENT=development` and `AUTH_DISABLED=true` to bypass API
+auth. Production rejects `AUTH_DISABLED=true` and requires `JWT_SECRET`.
 
 ## Verification
 

@@ -64,6 +64,8 @@ class SecuritySettings(FrozenSettingsModel):
 
     require_apply_flag: bool
     webhook_shared_secret: str
+    jwt_secret: str
+    auth_disabled: bool
 
 
 class FeatureFlags(FrozenSettingsModel):
@@ -99,6 +101,8 @@ class Settings(BaseSettings):
     enable_attachment_downloads: bool = False
     require_apply_flag: bool = True
     webhook_shared_secret: str = ""
+    jwt_secret: str = ""
+    auth_disabled: bool = False
 
     @property
     def app(self) -> AppSettings:
@@ -135,6 +139,8 @@ class Settings(BaseSettings):
         return SecuritySettings(
             require_apply_flag=self.require_apply_flag,
             webhook_shared_secret=self.webhook_shared_secret,
+            jwt_secret=self.jwt_secret,
+            auth_disabled=self.auth_disabled,
         )
 
     @property
@@ -166,6 +172,11 @@ class Settings(BaseSettings):
 
         if self.enable_webhooks and not self.webhook_shared_secret:
             raise ValueError("Production WEBHOOK_SHARED_SECRET is required when webhooks are enabled")
+
+        if self.auth_disabled:
+            raise ValueError("AUTH_DISABLED cannot be enabled in production")
+        if not self.jwt_secret:
+            raise ValueError("Production JWT_SECRET is required")
 
         return self
 

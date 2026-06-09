@@ -76,6 +76,7 @@ def test_production_like_settings_load_with_required_values() -> None:
         mise_project_root="C:/MISE/projects",
         mise_registry_root="C:/MISE/registry",
         report_export_root="C:/MISE/reports",
+        jwt_secret="jwt-secret",
         enable_write_operations=False,
         require_apply_flag=True,
         _env_file=None,

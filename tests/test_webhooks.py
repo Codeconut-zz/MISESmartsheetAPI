@@ -8,8 +8,19 @@ from app.api.dependencies import get_db_session
 from app.api import webhooks
 from app.config import Settings
 from app.main import app
+from app.security.auth import AuthenticatedUser, get_current_user
 from app.storage.database import create_engine_from_url, session_scope
 from app.storage.models import Base, WebhookEventRecord
+
+
+@pytest.fixture(autouse=True)
+def clear_dependency_overrides() -> Iterator[None]:
+    yield
+    app.dependency_overrides.clear()
+
+
+def auth_override() -> AuthenticatedUser:
+    return AuthenticatedUser(subject="webhook-test", roles={"integration_service"})
 
 
 def make_client(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> TestClient:
@@ -21,6 +32,7 @@ def make_client(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> TestClie
             yield session
 
     app.dependency_overrides[get_db_session] = override_session
+    app.dependency_overrides[get_current_user] = auth_override
     monkeypatch.setattr(webhooks, "get_settings", lambda: settings)
     client = TestClient(app)
     client.test_engine = engine  # type: ignore[attr-defined]

@@ -2,14 +2,26 @@ from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
+import pytest
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db_session
 from app.domain.tir import TechnicalIntakeRequest
 from app.main import app
+from app.security.auth import AuthenticatedUser, get_current_user
 from app.storage.database import create_engine_from_url, session_scope
 from app.storage.models import Base, ProjectFolderInventory, ReconciliationResult
 from app.storage.repositories import TIRRecordRepository
+
+
+@pytest.fixture(autouse=True)
+def clear_dependency_overrides() -> Iterator[None]:
+    yield
+    app.dependency_overrides.clear()
+
+
+def auth_override() -> AuthenticatedUser:
+    return AuthenticatedUser(subject="test-user", roles={"admin"})
 
 
 def make_tir(project_name: str, *, status: str = "IN_PROGRESS") -> TechnicalIntakeRequest:
@@ -83,6 +95,7 @@ def make_session_override() -> Callable[[], Iterator[Session]]:
 
 def make_client() -> TestClient:
     app.dependency_overrides[get_db_session] = make_session_override()
+    app.dependency_overrides[get_current_user] = auth_override
     return TestClient(app)
 
 
