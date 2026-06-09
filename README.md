@@ -41,5 +41,7 @@ python -m compileall app tests
 ## Safety Notes
 
 - Do not commit Smartsheet API tokens, `.env` files, credentials, or production paths.
+- Copy `.env.example` to a local `.env` only on your workstation or deployment host, then fill it with real values there.
+- Keep real Smartsheet tokens, database passwords, email addresses, sheet IDs, and filesystem roots out of commits, logs, screenshots, and tickets.
 - Generated exports, generated reports, logs, caches, virtual environments, and local database files are ignored by Git.
 - This scaffold intentionally contains no Smartsheet credentials or production filesystem locations.
