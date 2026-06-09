@@ -11,6 +11,9 @@ from app.connectors.smartsheet_client import SmartsheetClient, SmartsheetError
 from app.services.organization_loader import BlueprintLoadError, load_organization_blueprint
 from app.services.organization_loader import summarize_blueprint
 from app.services.filesystem_discovery_service import FilesystemDiscoveryService
+from app.services.reconciliation_service import ReconciliationService
+from app.services.reconciliation_service import export_reconciliation_results
+from app.services.reconciliation_service import load_folder_inventory_export, load_tir_records_export
 from app.services.tir_pull_service import TIRPullError, TIRPullService
 from app.connectors.mise_filesystem import FilesystemScanError
 from app.storage.database import get_engine, session_scope
@@ -190,6 +193,39 @@ def filesystem_scan(
         raise typer.Exit(code=1) from exc
 
     _echo_json(result.summary.model_dump(mode="json"), pretty=pretty)
+
+
+@reconcile_app.callback(invoke_without_command=True)
+def reconcile(
+    ctx: typer.Context,
+    tir: Path | None = typer.Option(None, "--tir", help="TIR pull JSON export."),
+    folders: Path | None = typer.Option(None, "--folders", help="Folder inventory JSON export."),
+    out: Path | None = typer.Option(None, "--out", help="Write XLSX, CSV, or JSON results."),
+    pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON output."),
+) -> None:
+    """Reconcile TIR records with discovered folders."""
+    if ctx.invoked_subcommand is not None:
+        return
+    if tir is None or folders is None:
+        _echo_error("--tir and --folders are required", pretty=pretty)
+        raise typer.Exit(code=1)
+
+    try:
+        results = ReconciliationService().reconcile(
+            tir_records=load_tir_records_export(tir),
+            folder_inventory=load_folder_inventory_export(folders),
+        )
+        if out is not None:
+            export_reconciliation_results(results, out)
+    except Exception as exc:
+        _echo_error(f"Reconciliation failed: {exc}", pretty=pretty)
+        raise typer.Exit(code=1) from exc
+
+    category_counts: dict[str, int] = {}
+    for result in results:
+        category_counts[result.category] = category_counts.get(result.category, 0) + 1
+
+    _echo_json({"results": len(results), "category_counts": category_counts}, pretty=pretty)
 
 
 def get_smartsheet_client() -> SmartsheetClient:

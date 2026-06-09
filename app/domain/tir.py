@@ -38,7 +38,7 @@ class TechnicalIntakeRequest(BaseModel):
     secretary_approval: bool
     mise_hod: str = Field(min_length=1)
     registry_confirmation: bool
-    registry_file_ref: str = Field(min_length=1)
+    registry_file_ref: str = ""
     client_file_ref: str = ""
     organisation: str = Field(min_length=1)
     project_name: str = Field(min_length=1)
