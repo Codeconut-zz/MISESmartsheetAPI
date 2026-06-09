@@ -1,0 +1,89 @@
+ministry:
+  code: MISE
+  name: Ministry of Infrastructure and Sustainable Energy
+  reporting_timezone: Pacific/Tarawa
+
+roles:
+  - code: MINISTER
+    title: Minister MISE
+  - code: SECRETARY
+    title: Secretary
+  - code: DG_ENGINEERING
+    title: Director General Engineering Services
+  - code: DIRECTOR_CORP
+    title: Corporate Services
+  - code: DIRECTOR_ABED
+    title: Director Architectural Building & Engineering Department (ABED)
+  - code: DIRECTOR_CED
+    title: Director Civil Engineering Department (CED)
+  - code: DIRECTOR_EPD
+    title: Director Energy Planning Department (EPD)
+  - code: DIRECTOR_WSED
+    title: Director Water Sanitation Engineering Department (WSED)
+
+reporting_lines:
+  - supervisor_role_code: MINISTER
+    report_role_code: SECRETARY
+  - supervisor_role_code: SECRETARY
+    report_role_code: DG_ENGINEERING
+  - supervisor_role_code: SECRETARY
+    report_role_code: DIRECTOR_CORP
+  - supervisor_role_code: DG_ENGINEERING
+    report_role_code: DIRECTOR_ABED
+  - supervisor_role_code: DG_ENGINEERING
+    report_role_code: DIRECTOR_CED
+  - supervisor_role_code: DG_ENGINEERING
+    report_role_code: DIRECTOR_EPD
+  - supervisor_role_code: DG_ENGINEERING
+    report_role_code: DIRECTOR_WSED
+
+standard_folders:
+  - "01 - Intake"
+  - "02 - Active Projects"
+  - "03 - Project Files"
+  - "04 - Reports"
+  - "05 - Archive"
+
+departments:
+  - code: CORP
+    name: Corporate Services
+    director_role_code: DIRECTOR_CORP
+  - code: ABED
+    name: Architectural Building & Engineering Department
+    director_role_code: DIRECTOR_ABED
+    divisions:
+      - code: ADD
+        name: Architectural Design Division
+        head_role: Principal Architect
+      - code: CPD
+        name: Cost Planning Division
+        head_role: Principal Cost Engineer
+      - code: QCID
+        name: Quality Control & Inspection Division
+        head_role: Principal Quality Control Engineer
+      - code: BMD
+        name: Building Maintenance Division
+        head_role: Principal Building Engineer
+  - code: CED
+    name: Civil Engineering Department
+    director_role_code: DIRECTOR_CED
+  - code: EPD
+    name: Energy Planning Department
+    director_role_code: DIRECTOR_EPD
+  - code: WSED
+    name: Water Sanitation Engineering Department
+    director_role_code: DIRECTOR_WSED
+
+folder_rules:
+  project_folder_pattern: "{registry_file_ref} - {project_name}"
+  sanitize_invalid_path_characters: true
+  no_overwrite: true
+
+reporting_outputs:
+  - ministry_portfolio_summary
+  - secretary_summary
+  - director_general_summary
+  - department_summary
+  - division_summary
+  - development_partner_summary
+  - data_quality_summary

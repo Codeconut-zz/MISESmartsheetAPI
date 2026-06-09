@@ -7,9 +7,12 @@ import typer
 
 from app.config import get_settings
 from app.connectors.smartsheet_client import SmartsheetClient, SmartsheetError
+from app.services.organization_loader import BlueprintLoadError, load_organization_blueprint
+from app.services.organization_loader import summarize_blueprint
 
 app = typer.Typer(name="mise-smartsheet", help="MISE Smartsheet Integration CLI.")
 smartsheet_app = typer.Typer(help="Read-only Smartsheet commands.")
+org_app = typer.Typer(help="MISE organization blueprint commands.")
 tir_app = typer.Typer(help="TIR workflow commands.")
 filesystem_app = typer.Typer(help="Filesystem discovery commands.")
 reconcile_app = typer.Typer(help="Reconciliation commands.")
@@ -18,6 +21,7 @@ plan_app = typer.Typer(help="Dry-run planning commands.")
 apply_app = typer.Typer(help="Guarded apply commands.")
 
 app.add_typer(smartsheet_app, name="smartsheet")
+app.add_typer(org_app, name="org")
 app.add_typer(tir_app, name="tir")
 app.add_typer(filesystem_app, name="filesystem")
 app.add_typer(reconcile_app, name="reconcile")
@@ -62,6 +66,21 @@ def smartsheet_list_sheets(
         lambda client: {"data": client.list_sheets()},
         pretty=pretty,
     )
+
+
+@org_app.command("validate-blueprint")
+def org_validate_blueprint(
+    path: str = typer.Argument(..., help="Path to a MISE organization blueprint YAML file."),
+    pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON output."),
+) -> None:
+    """Validate a MISE organization blueprint file."""
+    try:
+        blueprint = load_organization_blueprint(path)
+    except BlueprintLoadError as exc:
+        _echo_error(str(exc), pretty=pretty)
+        raise typer.Exit(code=1) from exc
+
+    _echo_json({"status": "valid", "blueprint": summarize_blueprint(blueprint)}, pretty=pretty)
 
 
 def get_smartsheet_client() -> SmartsheetClient:
