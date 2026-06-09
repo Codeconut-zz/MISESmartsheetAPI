@@ -11,6 +11,7 @@ from app.connectors.smartsheet_client import SmartsheetClient, SmartsheetError
 from app.services.organization_loader import BlueprintLoadError, load_organization_blueprint
 from app.services.organization_loader import summarize_blueprint
 from app.services.filesystem_discovery_service import FilesystemDiscoveryService
+from app.services.data_quality_service import DataQualityService, export_data_quality_report
 from app.services.reconciliation_service import ReconciliationService
 from app.services.reconciliation_service import export_reconciliation_results
 from app.services.reconciliation_service import load_folder_inventory_export, load_tir_records_export
@@ -28,6 +29,7 @@ tir_app = typer.Typer(help="TIR workflow commands.")
 filesystem_app = typer.Typer(help="Filesystem discovery commands.")
 reconcile_app = typer.Typer(help="Reconciliation commands.")
 report_app = typer.Typer(help="Reporting commands.")
+data_quality_app = typer.Typer(help="Data quality commands.")
 plan_app = typer.Typer(help="Dry-run planning commands.")
 apply_app = typer.Typer(help="Guarded apply commands.")
 
@@ -38,6 +40,7 @@ app.add_typer(tir_app, name="tir")
 app.add_typer(filesystem_app, name="filesystem")
 app.add_typer(reconcile_app, name="reconcile")
 app.add_typer(report_app, name="report")
+app.add_typer(data_quality_app, name="data-quality")
 app.add_typer(plan_app, name="plan")
 app.add_typer(apply_app, name="apply")
 
@@ -250,6 +253,24 @@ def report_export(
         raise typer.Exit(code=1) from exc
 
     _echo_json(result.model_dump(mode="json"), pretty=pretty)
+
+
+@data_quality_app.command("check")
+def data_quality_check(
+    tir: Path = typer.Option(..., "--tir", help="TIR pull JSON export."),
+    out: Path | None = typer.Option(None, "--out", help="Write XLSX, CSV, or JSON issues."),
+    pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON output."),
+) -> None:
+    """Check TIR records for data-quality issues."""
+    try:
+        report = DataQualityService().check(load_tir_records_export(tir))
+        if out is not None:
+            export_data_quality_report(report, out)
+    except Exception as exc:
+        _echo_error(f"Data quality check failed: {exc}", pretty=pretty)
+        raise typer.Exit(code=1) from exc
+
+    _echo_json(report.summary.model_dump(mode="json"), pretty=pretty)
 
 
 def get_smartsheet_client() -> SmartsheetClient:

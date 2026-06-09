@@ -99,9 +99,11 @@ def test_report_export_generates_workbook_json_and_csv(tmp_path: Path) -> None:
     ]
 
     summary_rows = list(workbook["Summary"].iter_rows(values_only=True))
+    data_quality_rows = list(workbook["Data Quality Issues"].iter_rows(values_only=True))
     assert ("project_status", "IN_PROGRESS", 2) in summary_rows
     assert ("reconciliation_category", "MATCHED", 1) in summary_rows
     assert ("reconciliation_category", "MISSING_FOLDER", 1) in summary_rows
+    assert ("MISE-CED-002", "missing_funding_source", "WARNING", "TIR record is missing funding source") in data_quality_rows
 
 
 def test_report_export_cli_outputs_paths(tmp_path: Path) -> None:

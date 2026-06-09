@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict
 
 from app.connectors.mise_filesystem import FolderInventoryEntry
 from app.domain.tir import TechnicalIntakeRequest
+from app.services.data_quality_service import DataQualityService, data_quality_issue_rows
 from app.services.reconciliation_service import (
     ReconciliationResult,
     load_folder_inventory_export,
@@ -52,6 +53,7 @@ class ReportExportService:
         tir_records = load_tir_records_export(tir_path)
         folder_inventory = load_folder_inventory_export(folders_path)
         reconciliation_results = load_reconciliation_results(reconciliation_path)
+        data_quality_report = DataQualityService().check(tir_records)
         summary_rows = build_summary_rows(tir_records, reconciliation_results)
         output_dir = Path(out_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -67,6 +69,7 @@ class ReportExportService:
             tir_records=tir_records,
             folder_inventory=folder_inventory,
             reconciliation_results=reconciliation_results,
+            data_quality_issues=data_quality_issue_rows(data_quality_report),
         )
         _write_json(
             json_path,
@@ -74,6 +77,7 @@ class ReportExportService:
             tir_records=tir_records,
             folder_inventory=folder_inventory,
             reconciliation_results=reconciliation_results,
+            data_quality_issues=data_quality_issue_rows(data_quality_report),
         )
         pd.DataFrame(summary_rows).to_csv(csv_path, index=False)
 
@@ -133,6 +137,7 @@ def _write_xlsx(
     tir_records: list[TechnicalIntakeRequest],
     folder_inventory: list[FolderInventoryEntry],
     reconciliation_results: list[ReconciliationResult],
+    data_quality_issues: list[dict[str, Any]],
 ) -> None:
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
         pd.DataFrame(summary_rows).to_excel(writer, sheet_name=SUMMARY_SHEET, index=False)
@@ -152,7 +157,7 @@ def _write_xlsx(
             sheet_name=RECONCILIATION_SHEET,
             index=False,
         )
-        pd.DataFrame(_data_quality_rows(reconciliation_results)).to_excel(
+        pd.DataFrame(data_quality_issues).to_excel(
             writer,
             sheet_name=DATA_QUALITY_SHEET,
             index=False,
@@ -166,13 +171,14 @@ def _write_json(
     tir_records: list[TechnicalIntakeRequest],
     folder_inventory: list[FolderInventoryEntry],
     reconciliation_results: list[ReconciliationResult],
+    data_quality_issues: list[dict[str, Any]],
 ) -> None:
     payload = {
         "summary": summary_rows,
         "tir_records": [record.model_dump(mode="json") for record in tir_records],
         "folder_inventory": [folder.model_dump(mode="json") for folder in folder_inventory],
         "reconciliation_results": [_reconciliation_row(result) for result in reconciliation_results],
-        "data_quality_issues": _data_quality_rows(reconciliation_results),
+        "data_quality_issues": data_quality_issues,
     }
     output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
@@ -187,22 +193,6 @@ def _count_rows(section: str, values: list[str]) -> list[dict[str, Any]]:
         {"section": section, "value": value, "count": count}
         for value, count in sorted(counts.items())
     ]
-
-
-def _data_quality_rows(
-    reconciliation_results: list[ReconciliationResult],
-) -> list[dict[str, Any]]:
-    rows = [
-        {
-            "registry_file_ref": result.registry_file_ref,
-            "project_name": result.project_name,
-            "issue_type": result.category,
-            "details": "; ".join(result.reasons),
-        }
-        for result in reconciliation_results
-        if result.category != "MATCHED"
-    ]
-    return rows or [{"registry_file_ref": "", "project_name": "", "issue_type": "", "details": ""}]
 
 
 def _reconciliation_row(result: ReconciliationResult) -> dict[str, Any]:
