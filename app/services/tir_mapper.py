@@ -46,9 +46,7 @@ class TIRMapper:
     ) -> TechnicalIntakeRequest:
         """Map one Smartsheet row into a TIR domain model."""
         display_to_id = _display_name_to_column_id(columns)
-        missing_display_names = [
-            display_name for display_name in self._column_map if display_name not in display_to_id
-        ]
+        missing_display_names = self.missing_columns(columns)
         if missing_display_names:
             formatted_names = ", ".join(missing_display_names)
             raise TIRMappingError(f"Smartsheet sheet is missing required TIR columns: {formatted_names}")
@@ -67,6 +65,11 @@ class TIRMapper:
             return TechnicalIntakeRequest.model_validate(model_data)
         except ValidationError as exc:
             raise TIRMappingError(f"TIR row validation failed: {exc}") from exc
+
+    def missing_columns(self, columns: list[dict[str, Any]]) -> list[str]:
+        """Return required display columns that are absent from a Smartsheet column list."""
+        display_to_id = _display_name_to_column_id(columns)
+        return [display_name for display_name in self._column_map if display_name not in display_to_id]
 
 
 def _display_name_to_column_id(columns: list[dict[str, Any]]) -> dict[str, int]:

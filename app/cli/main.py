@@ -1,6 +1,7 @@
 """Typer command-line entry point."""
 
 import json
+from pathlib import Path
 from typing import Any
 
 import typer
@@ -9,7 +10,8 @@ from app.config import get_settings
 from app.connectors.smartsheet_client import SmartsheetClient, SmartsheetError
 from app.services.organization_loader import BlueprintLoadError, load_organization_blueprint
 from app.services.organization_loader import summarize_blueprint
-from app.storage.database import get_engine
+from app.services.tir_pull_service import TIRPullError, TIRPullService
+from app.storage.database import get_engine, session_scope
 from app.storage.models import Base
 
 app = typer.Typer(name="mise-smartsheet", help="MISE Smartsheet Integration CLI.")
@@ -132,6 +134,38 @@ def db_status(
         raise typer.Exit(code=1) from exc
 
     _echo_json({"status": "configured", "dialect": dialect, "table_count": table_count}, pretty=pretty)
+
+
+@tir_app.command("pull")
+def tir_pull(
+    sheet_id: str | None = typer.Option(None, "--sheet-id", help="Override SMARTSHEET_TIR_SHEET_ID."),
+    out: Path | None = typer.Option(None, "--out", help="Write raw and normalized JSON export."),
+    persist: bool = typer.Option(False, "--persist", help="Persist valid records to the database."),
+    pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON output."),
+) -> None:
+    """Pull and validate TIR rows from Smartsheet."""
+    effective_sheet_id = sheet_id or get_settings().smartsheet.tir_sheet_id
+    if not effective_sheet_id:
+        _echo_error("SMARTSHEET_TIR_SHEET_ID is required unless --sheet-id is provided", pretty=pretty)
+        raise typer.Exit(code=1)
+
+    try:
+        with get_smartsheet_client() as client:
+            service = TIRPullService(
+                smartsheet_client=client,
+                session_scope_factory=lambda: session_scope(),
+            )
+            result = service.pull(
+                sheet_id=effective_sheet_id,
+                persist=persist,
+                out=out,
+                pretty=pretty,
+            )
+    except (TIRPullError, SmartsheetError, typer.BadParameter) as exc:
+        _echo_error(str(exc), pretty=pretty)
+        raise typer.Exit(code=1) from exc
+
+    _echo_json(result.summary.model_dump(mode="json"), pretty=pretty)
 
 
 def get_smartsheet_client() -> SmartsheetClient:
