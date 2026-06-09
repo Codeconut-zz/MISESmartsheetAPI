@@ -1,9 +1,10 @@
-"""Read-only Smartsheet API client."""
+"""Smartsheet API client with guarded write support."""
 
 from collections.abc import Iterable
 from typing import Any
 
 import httpx
+from pydantic import BaseModel, ConfigDict, Field
 import structlog
 from tenacity import Retrying, retry_if_exception, stop_after_attempt, wait_exponential
 
@@ -28,8 +29,41 @@ class SmartsheetError(Exception):
         self.response_body = redact(response_body)
 
 
+class SmartsheetSafetyError(ValueError):
+    """Raised when a write operation lacks required safety approval."""
+
+
+class SmartsheetWriteSafetyContext(BaseModel):
+    """Proof that a Smartsheet write was approved through a dry-run plan."""
+
+    model_config = ConfigDict(frozen=True)
+
+    dry_run_completed: bool
+    enable_write_operations: bool
+    apply_requested: bool
+    operation_id: str
+    approved_operation_ids: frozenset[str] = Field(default_factory=frozenset)
+    plan_path: str
+
+    def require_approved(self) -> None:
+        """Raise unless all write safety controls are satisfied."""
+        missing_controls: list[str] = []
+        if not self.dry_run_completed:
+            missing_controls.append("dry_run_completed")
+        if not self.enable_write_operations:
+            missing_controls.append("ENABLE_WRITE_OPERATIONS")
+        if not self.apply_requested:
+            missing_controls.append("--apply")
+        if self.operation_id not in self.approved_operation_ids:
+            missing_controls.append("approved_plan_operation")
+
+        if missing_controls:
+            formatted = ", ".join(missing_controls)
+            raise SmartsheetSafetyError(f"Smartsheet write safety controls missing: {formatted}")
+
+
 class SmartsheetClient:
-    """Read-only Smartsheet API client."""
+    """Smartsheet API client with read methods and safety-gated writes."""
 
     def __init__(
         self,
@@ -92,6 +126,22 @@ class SmartsheetClient:
 
         return self._get(f"/sheets/{sheet_id}", params=params)
 
+    def update_row_cells(
+        self,
+        sheet_id: str,
+        row_id: str,
+        cells: list[dict[str, Any]],
+        *,
+        safety_context: SmartsheetWriteSafetyContext,
+    ) -> dict[str, Any]:
+        """Update Smartsheet row cells only with an approved write safety context."""
+        safety_context.require_approved()
+        if not cells:
+            raise SmartsheetSafetyError("At least one cell is required for Smartsheet write-back")
+
+        payload = [{"id": row_id, "cells": cells}]
+        return self._put(f"/sheets/{sheet_id}/rows", json_body=payload)
+
     def _headers(self) -> dict[str, str]:
         headers = {"Accept": "application/json"}
         if self._settings.access_token:
@@ -130,6 +180,20 @@ class SmartsheetClient:
 
         raise SmartsheetError("Smartsheet request retry loop exited unexpectedly")
 
+    def _put(self, path: str, *, json_body: Any) -> dict[str, Any]:
+        self._logger.info("smartsheet_put", path=path)
+
+        for attempt in Retrying(
+            retry=retry_if_exception(_is_retryable_error),
+            stop=stop_after_attempt(self._retry_attempts),
+            wait=wait_exponential(multiplier=0.01, max=0.1),
+            reraise=True,
+        ):
+            with attempt:
+                return self._put_once(path, json_body=json_body)
+
+        raise SmartsheetError("Smartsheet request retry loop exited unexpectedly")
+
     def _get_once(
         self,
         path: str,
@@ -138,6 +202,25 @@ class SmartsheetClient:
     ) -> dict[str, Any]:
         try:
             response = self._client.get(path, params=params)
+        except httpx.HTTPError as exc:
+            raise SmartsheetError("Smartsheet request failed") from exc
+
+        response_body = _response_json(response)
+        if response.status_code >= 400:
+            raise SmartsheetError(
+                f"Smartsheet returned HTTP {response.status_code}",
+                status_code=response.status_code,
+                response_body=response_body,
+            )
+
+        if isinstance(response_body, dict):
+            return response_body
+
+        raise SmartsheetError("Smartsheet response was not a JSON object")
+
+    def _put_once(self, path: str, *, json_body: Any) -> dict[str, Any]:
+        try:
+            response = self._client.put(path, json=json_body)
         except httpx.HTTPError as exc:
             raise SmartsheetError("Smartsheet request failed") from exc
 

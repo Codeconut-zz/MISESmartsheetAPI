@@ -24,6 +24,10 @@ from app.services.reconciliation_service import ReconciliationService
 from app.services.reconciliation_service import export_reconciliation_results
 from app.services.reconciliation_service import load_folder_inventory_export, load_tir_records_export
 from app.services.report_export_service import ReportExportService
+from app.services.smartsheet_write_back_service import (
+    SmartsheetWriteBackError,
+    SmartsheetWriteBackService,
+)
 from app.services.tir_pull_service import TIRPullError, TIRPullService
 from app.connectors.mise_filesystem import FilesystemScanError
 from app.storage.database import get_engine, session_scope
@@ -366,6 +370,31 @@ def apply_folder_plan(
             actor=actor,
         )
     except ProjectFolderCreationError as exc:
+        _echo_error(str(exc), pretty=pretty)
+        raise typer.Exit(code=1) from exc
+
+    _echo_json(result.model_dump(mode="json"), pretty=pretty)
+
+
+@app.command("apply-smartsheet-plan")
+def apply_smartsheet_plan(
+    plan_path: Path = typer.Argument(..., help="Previously generated dry-run plan JSON file."),
+    apply: bool = typer.Option(False, "--apply", help="Actually update Smartsheet rows from the plan."),
+    actor: str = typer.Option("system", "--actor", help="Audit actor recorded for Smartsheet updates."),
+    pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON output."),
+) -> None:
+    """Update Smartsheet rows from an approved dry-run plan."""
+    try:
+        with get_smartsheet_client() as client:
+            result = SmartsheetWriteBackService(
+                smartsheet_client=client,
+                audit=AuditService(sink=InMemoryAuditSink(), emit_logs=False),
+            ).apply_plan(
+                plan_path=plan_path,
+                apply=apply,
+                actor=actor,
+            )
+    except (SmartsheetWriteBackError, SmartsheetError, typer.BadParameter) as exc:
         _echo_error(str(exc), pretty=pretty)
         raise typer.Exit(code=1) from exc
 
