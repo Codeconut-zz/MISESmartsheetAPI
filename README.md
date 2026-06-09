@@ -2,6 +2,20 @@
 
 Python service scaffold for the MISE Smartsheet Integration pilot.
 
+## Quickstart
+
+```bash
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+Copy-Item .env.example .env
+pytest
+ruff check .
+python -m compileall app tests scripts
+uvicorn app.main:app --reload
+```
+
 ## Setup
 
 Requirements:
@@ -176,4 +190,9 @@ pre-commit run --all-files
 - Generated exports, generated reports, logs, caches, virtual environments, and local database files are ignored by Git.
 - This scaffold intentionally contains no Smartsheet credentials or production filesystem locations.
 
-For operating the pilot, use [docs/OPERATIONS_RUNBOOK.md](docs/OPERATIONS_RUNBOOK.md).
+Handover documents:
+
+- [Operations runbook](docs/OPERATIONS_RUNBOOK.md)
+- [Security review checklist](docs/SECURITY_REVIEW_CHECKLIST.md)
+- [Pilot acceptance test plan](docs/PILOT_ACCEPTANCE_TEST_PLAN.md)
+- [Handover notes](docs/HANDOVER_NOTES.md)
