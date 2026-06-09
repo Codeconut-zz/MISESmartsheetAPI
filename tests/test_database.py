@@ -6,6 +6,7 @@ from sqlalchemy import inspect
 from app.services.tir_mapper import TIRMapper
 from app.storage.database import create_engine_from_url, session_scope
 from app.storage.models import (
+    AttachmentMetadataRecord,
     AuditEventRecord,
     Base,
     DepartmentReportingSnapshot,
@@ -34,6 +35,7 @@ def test_database_models_create_required_tables() -> None:
         ReconciliationResult.__tablename__,
         AuditEventRecord.__tablename__,
         DepartmentReportingSnapshot.__tablename__,
+        AttachmentMetadataRecord.__tablename__,
     }.issubset(table_names)
 
 

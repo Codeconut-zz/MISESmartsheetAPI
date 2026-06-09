@@ -150,6 +150,27 @@ class DepartmentReportingSnapshot(Base, TimestampMixin):
     missing_folder_count: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class AttachmentMetadataRecord(Base, TimestampMixin):
+    """Persisted Smartsheet attachment metadata without file contents."""
+
+    __tablename__ = "attachment_metadata"
+    __table_args__ = (
+        Index("ix_attachment_metadata_attachment_id", "attachment_id", unique=True),
+        Index("ix_attachment_metadata_tir_record_id", "tir_record_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    attachment_id: Mapped[str] = mapped_column(String(255))
+    name: Mapped[str] = mapped_column(String(500))
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    content_type: Mapped[str] = mapped_column(String(255), default="")
+    source_url: Mapped[str] = mapped_column(String(2000), default="")
+    tir_record_id: Mapped[str] = mapped_column(String(36), default="")
+    smartsheet_sheet_id: Mapped[str] = mapped_column(String(255), default="")
+    smartsheet_row_id: Mapped[str] = mapped_column(String(255), default="")
+    sanitized_filename: Mapped[str] = mapped_column(String(500), default="")
+
+
 class WebhookEventRecord(Base, TimestampMixin):
     """Persisted inbound webhook event queued for background processing."""
 

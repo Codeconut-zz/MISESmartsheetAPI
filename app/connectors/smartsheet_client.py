@@ -126,6 +126,30 @@ class SmartsheetClient:
 
         return self._get(f"/sheets/{sheet_id}", params=params)
 
+    def list_row_attachments(self, sheet_id: str, row_id: str) -> list[dict[str, Any]]:
+        """Return attachment metadata for one row without downloading file contents."""
+        return self._get_paginated(f"/sheets/{sheet_id}/rows/{row_id}/attachments")
+
+    def get_attachment_metadata(self, sheet_id: str, attachment_id: str) -> dict[str, Any]:
+        """Return one attachment metadata record without downloading file contents."""
+        return self._get(f"/sheets/{sheet_id}/attachments/{attachment_id}")
+
+    def download_attachment_content(self, source_url: str) -> bytes:
+        """Download attachment bytes from an explicit source URL."""
+        try:
+            response = self._client.get(source_url)
+        except httpx.HTTPError as exc:
+            raise SmartsheetError("Smartsheet attachment download failed") from exc
+
+        if response.status_code >= 400:
+            raise SmartsheetError(
+                f"Smartsheet returned HTTP {response.status_code}",
+                status_code=response.status_code,
+                response_body=_response_json(response),
+            )
+
+        return response.content
+
     def update_row_cells(
         self,
         sheet_id: str,

@@ -56,6 +56,7 @@ class FilesystemSettings(FrozenSettingsModel):
     mise_project_root: str
     mise_registry_root: str
     report_export_root: str
+    attachment_download_root: str
 
 
 class SecuritySettings(FrozenSettingsModel):
@@ -70,6 +71,7 @@ class FeatureFlags(FrozenSettingsModel):
 
     enable_write_operations: bool
     enable_webhooks: bool
+    enable_attachment_downloads: bool
 
 
 class Settings(BaseSettings):
@@ -91,8 +93,10 @@ class Settings(BaseSettings):
     mise_project_root: str = ""
     mise_registry_root: str = ""
     report_export_root: str = DEFAULT_REPORT_FOLDER
+    attachment_download_root: str = ""
     enable_write_operations: bool = False
     enable_webhooks: bool = False
+    enable_attachment_downloads: bool = False
     require_apply_flag: bool = True
     webhook_shared_secret: str = ""
 
@@ -122,6 +126,7 @@ class Settings(BaseSettings):
             mise_project_root=self.mise_project_root,
             mise_registry_root=self.mise_registry_root,
             report_export_root=self.report_export_root,
+            attachment_download_root=self.attachment_download_root,
         )
 
     @property
@@ -138,6 +143,7 @@ class Settings(BaseSettings):
         return FeatureFlags(
             enable_write_operations=self.enable_write_operations,
             enable_webhooks=self.enable_webhooks,
+            enable_attachment_downloads=self.enable_attachment_downloads,
         )
 
     @model_validator(mode="after")

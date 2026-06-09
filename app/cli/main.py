@@ -28,6 +28,7 @@ from app.services.smartsheet_write_back_service import (
     SmartsheetWriteBackError,
     SmartsheetWriteBackService,
 )
+from app.services.attachment_service import AttachmentHandlingError, AttachmentService
 from app.services.tir_pull_service import TIRPullError, TIRPullService
 from app.connectors.mise_filesystem import FilesystemScanError
 from app.storage.database import get_engine, session_scope
@@ -187,6 +188,66 @@ def tir_pull(
         raise typer.Exit(code=1) from exc
 
     _echo_json(result.summary.model_dump(mode="json"), pretty=pretty)
+
+
+@tir_app.command("attachments")
+def tir_attachments(
+    sheet_id: str = typer.Option(..., "--sheet-id", help="Smartsheet sheet ID."),
+    row_id: str = typer.Option(..., "--row-id", help="Smartsheet row ID."),
+    metadata_only: bool = typer.Option(True, "--metadata-only", help="Return metadata without file contents."),
+    persist: bool = typer.Option(False, "--persist", help="Persist attachment metadata to the database."),
+    tir_record_id: str = typer.Option("", "--tir-record-id", help="Optional linked TIR record ID."),
+    pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON output."),
+) -> None:
+    """List row attachment metadata without downloading files."""
+    if not metadata_only:
+        _echo_error("Attachment listing is metadata-only; use tir download-attachment for downloads", pretty=pretty)
+        raise typer.Exit(code=1)
+
+    try:
+        with get_smartsheet_client() as client:
+            result = AttachmentService(
+                smartsheet_client=client,
+                session_scope_factory=lambda: session_scope(),
+            ).list_row_metadata(
+                sheet_id=sheet_id,
+                row_id=row_id,
+                tir_record_id=tir_record_id,
+                persist=persist,
+            )
+    except (AttachmentHandlingError, SmartsheetError, typer.BadParameter) as exc:
+        _echo_error(str(exc), pretty=pretty)
+        raise typer.Exit(code=1) from exc
+
+    _echo_json(result.model_dump(mode="json"), pretty=pretty)
+
+
+@tir_app.command("download-attachment")
+def tir_download_attachment(
+    sheet_id: str = typer.Option(..., "--sheet-id", help="Smartsheet sheet ID."),
+    attachment_id: str = typer.Option(..., "--attachment-id", help="Smartsheet attachment ID."),
+    target_folder: Path = typer.Option(..., "--target-folder", help="Folder under ATTACHMENT_DOWNLOAD_ROOT."),
+    apply_download: bool = typer.Option(
+        False,
+        "--apply-download",
+        help="Actually download attachment file content.",
+    ),
+    pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON output."),
+) -> None:
+    """Download one attachment through explicit download controls."""
+    try:
+        with get_smartsheet_client() as client:
+            result = AttachmentService(smartsheet_client=client).download_attachment(
+                sheet_id=sheet_id,
+                attachment_id=attachment_id,
+                target_folder=target_folder,
+                apply_download=apply_download,
+            )
+    except (AttachmentHandlingError, SmartsheetError, typer.BadParameter) as exc:
+        _echo_error(str(exc), pretty=pretty)
+        raise typer.Exit(code=1) from exc
+
+    _echo_json(result.model_dump(mode="json"), pretty=pretty)
 
 
 @filesystem_app.command("scan")

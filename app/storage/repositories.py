@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.domain.tir import TechnicalIntakeRequest
 from app.storage.models import (
+    AttachmentMetadataRecord,
     DepartmentReportingSnapshot,
     ProjectFolderInventory,
     ReconciliationResult,
@@ -299,6 +300,59 @@ class WebhookEventRepository:
         session.add(record)
         session.flush()
         return record, True
+
+
+class AttachmentMetadataRepository:
+    """Repository for Smartsheet attachment metadata."""
+
+    def upsert(
+        self,
+        session: Session,
+        *,
+        attachment_id: str,
+        name: str,
+        size: int,
+        content_type: str,
+        source_url: str,
+        tir_record_id: str,
+        smartsheet_sheet_id: str,
+        smartsheet_row_id: str,
+        sanitized_filename: str,
+    ) -> AttachmentMetadataRecord:
+        """Insert or update attachment metadata without storing file content."""
+        existing = session.scalar(
+            select(AttachmentMetadataRecord).where(
+                AttachmentMetadataRecord.attachment_id == attachment_id
+            )
+        )
+        if existing is None:
+            existing = AttachmentMetadataRecord(attachment_id=attachment_id)
+            session.add(existing)
+
+        existing.name = name
+        existing.size = size
+        existing.content_type = content_type
+        existing.source_url = source_url
+        existing.tir_record_id = tir_record_id
+        existing.smartsheet_sheet_id = smartsheet_sheet_id
+        existing.smartsheet_row_id = smartsheet_row_id
+        existing.sanitized_filename = sanitized_filename
+        session.flush()
+        return existing
+
+    def list_by_tir_record(
+        self,
+        session: Session,
+        tir_record_id: str,
+    ) -> list[AttachmentMetadataRecord]:
+        """Return attachment metadata linked to one TIR record."""
+        return list(
+            session.scalars(
+                select(AttachmentMetadataRecord).where(
+                    AttachmentMetadataRecord.tir_record_id == tir_record_id
+                )
+            ).all()
+        )
 
 
 def _count(session: Session, stmt: Select[tuple[object]]) -> int:
