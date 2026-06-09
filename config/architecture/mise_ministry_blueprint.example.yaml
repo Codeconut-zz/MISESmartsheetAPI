@@ -44,6 +44,14 @@ standard_folders:
   - "04 - Reports"
   - "05 - Archive"
 
+standard_sheets:
+  - name: TIR Register
+    purpose: Technical intake request tracking
+  - name: Project Folder Register
+    purpose: Project folder reconciliation tracking
+  - name: Data Quality Register
+    purpose: Validation issue tracking
+
 departments:
   - code: CORP
     name: Corporate Services
@@ -87,3 +95,13 @@ reporting_outputs:
   - division_summary
   - development_partner_summary
   - data_quality_summary
+
+smartsheet_writeback_rules:
+  protected_columns:
+    - "SECRETARY APPROVAL"
+    - "CONTACT EMAIL"
+  allowed_columns:
+    - "MISE Project Folder Link"
+    - "Integration Last Sync"
+    - "Reconciliation Status"
+    - "Data Quality Status"

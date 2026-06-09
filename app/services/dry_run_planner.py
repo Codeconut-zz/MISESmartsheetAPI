@@ -7,10 +7,10 @@ import re
 from typing import Any
 
 from app.config import DEFAULT_REPORT_FOLDER
-from app.domain.organization import OrganizationBlueprint
+from app.domain.blueprint import ArchitectureBlueprint
 from app.domain.plan import OperationRiskLevel, OperationType, Plan, PlanOperation
 from app.domain.tir import TechnicalIntakeRequest
-from app.services.organization_loader import load_organization_blueprint
+from app.services.blueprint_parser import BlueprintParser, blueprint_plan_operations
 from app.services.reconciliation_service import (
     ReconciliationResult,
     ReconciliationService,
@@ -33,11 +33,8 @@ class DryRunPlanner:
         reconciliation_path: str | Path | None = None,
     ) -> Plan:
         """Return a dry-run plan from blueprint and optional workflow exports."""
-        blueprint = load_organization_blueprint(blueprint_path)
-        operations = [
-            *_report_folder_operations(blueprint, report_root=report_root),
-            *_department_record_operations(blueprint),
-        ]
+        blueprint = BlueprintParser().parse(blueprint_path)
+        operations = blueprint_plan_operations(blueprint, report_root=report_root)
         warnings: list[str] = []
 
         tir_records: list[TechnicalIntakeRequest] = []
@@ -75,54 +72,8 @@ def export_plan(plan: Plan, out: str | Path, *, pretty: bool = True) -> None:
         encoding="utf-8",
     )
 
-
-def _report_folder_operations(
-    blueprint: OrganizationBlueprint,
-    *,
-    report_root: str | Path,
-) -> list[PlanOperation]:
-    operations: list[PlanOperation] = []
-    for output_name in blueprint.reporting_outputs:
-        target = str(Path(report_root) / output_name)
-        operations.append(
-            _operation(
-                operation_type=OperationType.CREATE_REPORT_FOLDER,
-                target=target,
-                reason=f"Prepare report output folder for {output_name}",
-                before_state={"exists": "unknown"},
-                after_state={"exists": True, "folder_name": output_name},
-                risk_level=OperationRiskLevel.LOW,
-                dry_run_result="Would create report folder if missing",
-            )
-        )
-
-    return operations
-
-
-def _department_record_operations(blueprint: OrganizationBlueprint) -> list[PlanOperation]:
-    operations: list[PlanOperation] = []
-    for department in blueprint.departments:
-        operations.append(
-            _operation(
-                operation_type=OperationType.CREATE_DATABASE_RECORD,
-                target=f"department_reporting_snapshot:{department.code}",
-                reason=f"Prepare reporting snapshot record for {department.name}",
-                before_state={"exists": "unknown"},
-                after_state={
-                    "department_code": department.code,
-                    "department_name": department.name,
-                    "division_count": len(department.divisions),
-                },
-                risk_level=OperationRiskLevel.LOW,
-                dry_run_result="Would create or refresh database reporting record",
-            )
-        )
-
-    return operations
-
-
 def _reconciliation_operations(
-    blueprint: OrganizationBlueprint,
+    blueprint: ArchitectureBlueprint,
     tir_records: list[TechnicalIntakeRequest],
     reconciliation_results: list[ReconciliationResult],
 ) -> list[PlanOperation]:
@@ -141,7 +92,7 @@ def _reconciliation_operations(
 
 
 def _create_project_folder_operation(
-    blueprint: OrganizationBlueprint,
+    blueprint: ArchitectureBlueprint,
     tir: TechnicalIntakeRequest,
 ) -> PlanOperation:
     target = _project_folder_target(blueprint, tir)
@@ -188,14 +139,14 @@ def _attachment_link_operation(result: ReconciliationResult) -> PlanOperation:
     )
 
 
-def _project_folder_target(blueprint: OrganizationBlueprint, tir: TechnicalIntakeRequest) -> str:
-    pattern = str(blueprint.folder_rules.get("project_folder_pattern", "{registry_file_ref} - {project_name}"))
+def _project_folder_target(blueprint: ArchitectureBlueprint, tir: TechnicalIntakeRequest) -> str:
+    pattern = blueprint.folder_rules.project_folder_pattern
     folder_name = pattern.format(
         registry_file_ref=tir.registry_file_ref,
         project_name=tir.project_name,
         department_code=tir.mise_hod,
     )
-    if blueprint.folder_rules.get("sanitize_invalid_path_characters", True):
+    if blueprint.folder_rules.sanitize_invalid_path_characters:
         folder_name = _sanitize_path_component(folder_name)
 
     return str(Path(tir.mise_hod) / folder_name)
