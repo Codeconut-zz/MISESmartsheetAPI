@@ -38,6 +38,7 @@ mise-smartsheet smartsheet whoami --pretty
 mise-smartsheet smartsheet list-workspaces
 mise-smartsheet smartsheet list-sheets
 mise-smartsheet org validate-blueprint config/architecture/mise_ministry_blueprint.example.yaml
+mise-smartsheet db status
 ```
 
 All CLI commands emit JSON by default. Smartsheet commands are read-only at this stage and require a

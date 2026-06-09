@@ -9,10 +9,13 @@ from app.config import get_settings
 from app.connectors.smartsheet_client import SmartsheetClient, SmartsheetError
 from app.services.organization_loader import BlueprintLoadError, load_organization_blueprint
 from app.services.organization_loader import summarize_blueprint
+from app.storage.database import get_engine
+from app.storage.models import Base
 
 app = typer.Typer(name="mise-smartsheet", help="MISE Smartsheet Integration CLI.")
 smartsheet_app = typer.Typer(help="Read-only Smartsheet commands.")
 org_app = typer.Typer(help="MISE organization blueprint commands.")
+db_app = typer.Typer(help="Database migration commands.")
 tir_app = typer.Typer(help="TIR workflow commands.")
 filesystem_app = typer.Typer(help="Filesystem discovery commands.")
 reconcile_app = typer.Typer(help="Reconciliation commands.")
@@ -22,6 +25,7 @@ apply_app = typer.Typer(help="Guarded apply commands.")
 
 app.add_typer(smartsheet_app, name="smartsheet")
 app.add_typer(org_app, name="org")
+app.add_typer(db_app, name="db")
 app.add_typer(tir_app, name="tir")
 app.add_typer(filesystem_app, name="filesystem")
 app.add_typer(reconcile_app, name="reconcile")
@@ -81,6 +85,53 @@ def org_validate_blueprint(
         raise typer.Exit(code=1) from exc
 
     _echo_json({"status": "valid", "blueprint": summarize_blueprint(blueprint)}, pretty=pretty)
+
+
+@db_app.command("init")
+def db_init(
+    pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON output."),
+) -> None:
+    """Create database tables for local development."""
+    try:
+        Base.metadata.create_all(get_engine())
+    except Exception as exc:
+        _echo_error(f"Database initialization failed: {exc}", pretty=pretty)
+        raise typer.Exit(code=1) from exc
+
+    _echo_json({"status": "initialized"}, pretty=pretty)
+
+
+@db_app.command("upgrade")
+def db_upgrade(
+    pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON output."),
+) -> None:
+    """Run Alembic migrations to head."""
+    try:
+        from alembic import command
+        from alembic.config import Config
+
+        command.upgrade(Config("alembic.ini"), "head")
+    except Exception as exc:
+        _echo_error(f"Database upgrade failed: {exc}", pretty=pretty)
+        raise typer.Exit(code=1) from exc
+
+    _echo_json({"status": "upgraded"}, pretty=pretty)
+
+
+@db_app.command("status")
+def db_status(
+    pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON output."),
+) -> None:
+    """Report current database connectivity and table count."""
+    try:
+        engine = get_engine()
+        table_count = len(Base.metadata.tables)
+        dialect = engine.dialect.name
+    except Exception as exc:
+        _echo_error(f"Database status failed: {exc}", pretty=pretty)
+        raise typer.Exit(code=1) from exc
+
+    _echo_json({"status": "configured", "dialect": dialect, "table_count": table_count}, pretty=pretty)
 
 
 def get_smartsheet_client() -> SmartsheetClient:
