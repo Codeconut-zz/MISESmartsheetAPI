@@ -14,6 +14,7 @@ from app.services.filesystem_discovery_service import FilesystemDiscoveryService
 from app.services.reconciliation_service import ReconciliationService
 from app.services.reconciliation_service import export_reconciliation_results
 from app.services.reconciliation_service import load_folder_inventory_export, load_tir_records_export
+from app.services.report_export_service import ReportExportService
 from app.services.tir_pull_service import TIRPullError, TIRPullService
 from app.connectors.mise_filesystem import FilesystemScanError
 from app.storage.database import get_engine, session_scope
@@ -226,6 +227,29 @@ def reconcile(
         category_counts[result.category] = category_counts.get(result.category, 0) + 1
 
     _echo_json({"results": len(results), "category_counts": category_counts}, pretty=pretty)
+
+
+@report_app.command("export")
+def report_export(
+    tir: Path = typer.Option(..., "--tir", help="TIR pull JSON export."),
+    folders: Path = typer.Option(..., "--folders", help="Folder inventory JSON export."),
+    reconciliation: Path = typer.Option(..., "--reconciliation", help="Reconciliation export."),
+    out: Path = typer.Option(Path("data/reports"), "--out", help="Output report directory."),
+    pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON output."),
+) -> None:
+    """Generate JSON, CSV, and Excel reporting outputs."""
+    try:
+        result = ReportExportService().export(
+            tir_path=tir,
+            folders_path=folders,
+            reconciliation_path=reconciliation,
+            out_dir=out,
+        )
+    except Exception as exc:
+        _echo_error(f"Report export failed: {exc}", pretty=pretty)
+        raise typer.Exit(code=1) from exc
+
+    _echo_json(result.model_dump(mode="json"), pretty=pretty)
 
 
 def get_smartsheet_client() -> SmartsheetClient:

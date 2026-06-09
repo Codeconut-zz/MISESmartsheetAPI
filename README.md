@@ -41,6 +41,7 @@ mise-smartsheet org validate-blueprint config/architecture/mise_ministry_bluepri
 mise-smartsheet db status
 mise-smartsheet filesystem scan --root C:\MISE\Projects --max-depth 4 --out data/exports/folder_inventory.json
 mise-smartsheet reconcile --tir data/exports/tir_rows.json --folders data/exports/folder_inventory.json --out data/reports/reconciliation.xlsx
+mise-smartsheet report export --tir data/exports/tir_rows.json --folders data/exports/folder_inventory.json --reconciliation data/reports/reconciliation.json --out data/reports
 ```
 
 All CLI commands emit JSON by default. Smartsheet commands are read-only at this stage and require a
