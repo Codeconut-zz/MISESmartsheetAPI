@@ -10,7 +10,9 @@ from app.config import get_settings
 from app.connectors.smartsheet_client import SmartsheetClient, SmartsheetError
 from app.services.organization_loader import BlueprintLoadError, load_organization_blueprint
 from app.services.organization_loader import summarize_blueprint
+from app.services.filesystem_discovery_service import FilesystemDiscoveryService
 from app.services.tir_pull_service import TIRPullError, TIRPullService
+from app.connectors.mise_filesystem import FilesystemScanError
 from app.storage.database import get_engine, session_scope
 from app.storage.models import Base
 
@@ -162,6 +164,28 @@ def tir_pull(
                 pretty=pretty,
             )
     except (TIRPullError, SmartsheetError, typer.BadParameter) as exc:
+        _echo_error(str(exc), pretty=pretty)
+        raise typer.Exit(code=1) from exc
+
+    _echo_json(result.summary.model_dump(mode="json"), pretty=pretty)
+
+
+@filesystem_app.command("scan")
+def filesystem_scan(
+    root: Path | None = typer.Option(None, "--root", help="Root folder to scan."),
+    max_depth: int = typer.Option(4, "--max-depth", min=0, help="Maximum recursive folder depth."),
+    out: Path | None = typer.Option(None, "--out", help="Write JSON or CSV inventory export."),
+    pretty: bool = typer.Option(False, "--pretty", help="Pretty-print JSON output."),
+) -> None:
+    """Scan MISE folders without modifying files."""
+    try:
+        result = FilesystemDiscoveryService().scan(
+            root=root,
+            max_depth=max_depth,
+            out=out,
+            pretty=pretty,
+        )
+    except FilesystemScanError as exc:
         _echo_error(str(exc), pretty=pretty)
         raise typer.Exit(code=1) from exc
 
