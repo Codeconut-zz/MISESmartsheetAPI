@@ -1,0 +1,16 @@
+{
+  "snapshots": [
+    {
+      "scope": "MINISTRY_PORTFOLIO",
+      "snapshot_name": "Ministry-wide portfolio",
+      "project_count": 5,
+      "missing_folder_count": 1
+    },
+    {
+      "scope": "DEPARTMENT",
+      "snapshot_name": "ABED view",
+      "department_code": "ABED",
+      "project_count": 2
+    }
+  ]
+}

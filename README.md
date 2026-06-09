@@ -131,6 +131,20 @@ ruff check .
 python -m compileall app tests
 ```
 
+CI runs the same quality gate in GitHub Actions, plus coverage:
+
+```bash
+pytest --cov=app --cov-report=term-missing
+```
+
+After the first workflow run, add the repository Actions badge from GitHub to the top of this
+README if desired. Local pre-commit hooks can be enabled with:
+
+```bash
+pre-commit install
+pre-commit run --all-files
+```
+
 ## Safety Notes
 
 - Do not commit Smartsheet API tokens, `.env` files, credentials, or production paths.

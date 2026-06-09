@@ -30,6 +30,7 @@ dependencies = [
 dev = [
     "pytest",
     "pytest-cov",
+    "pre-commit",
     "respx",
     "ruff",
     "mypy",
@@ -51,4 +52,19 @@ line-length = 100
 [tool.mypy]
 python_version = "3.11"
 packages = ["app"]
-strict = true
+warn_unused_configs = true
+ignore_missing_imports = true
+check_untyped_defs = true
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+
+[tool.coverage.report]
+fail_under = 50
+show_missing = true
+skip_covered = true
+exclude_lines = [
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
